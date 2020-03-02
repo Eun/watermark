@@ -1,0 +1,18 @@
+# github.com/disintegration/gift v1.1.2
+github.com/disintegration/gift
+# github.com/gopherjs/gopherjs v0.0.0-20200217142428-fce0ec30dd00
+github.com/gopherjs/gopherjs/js
+# github.com/pkg/errors v0.9.1
+github.com/pkg/errors
+# github.com/pwaller/go-hexcolor v0.0.0-20121021114049-b060ed67e05f
+github.com/pwaller/go-hexcolor
+# golang.org/x/image v0.0.0-20171214225156-12117c17ca67
+golang.org/x/image/bmp
+golang.org/x/image/draw
+golang.org/x/image/font
+golang.org/x/image/font/inconsolata
+golang.org/x/image/math/fixed
+golang.org/x/image/math/f64
+golang.org/x/image/font/basicfont
+# honnef.co/go/js/dom v0.0.0-20190526011328-ebc4cf92d81f
+honnef.co/go/js/dom

@@ -16,7 +16,7 @@
 //
 // Inconsolata's home page is at
 // http://www.levien.com/type/myfonts/inconsolata.html
-package inconsolata
+package inconsolata // import "golang.org/x/image/font/inconsolata"
 
 import (
 	"golang.org/x/image/font/basicfont"

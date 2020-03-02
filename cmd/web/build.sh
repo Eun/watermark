@@ -1,0 +1,1 @@
+gopherjs build github.com/Eun/watermark/cmd/web -v -m --color -o watermark.js
