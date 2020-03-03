@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Watermark</title>
+    <script src="web.js"></script>
+</head>
+<body>
+
+<style type="text/css">
+    p {
+        padding: 0;
+        margin: 0;
+    }
+    .table {
+        display: table;
+    }
+    .table > div {
+        display: table-row;
+    }
+    .table > div > div {
+        display: table-cell;
+        padding: .2rem .1rem;
+    }
+    .table > div > div > * {
+        width: 100%;
+    }
+    #app {
+        display: none;
+    }
+    #dst {
+        max-width: 100%;
+        margin: 0 auto;
+        display: block;
+    }
+
+</style>
+
+<div>
+    <h2>Watermark an Image</h2>
+    <p>Datatheft happens every minute, often copies of personal documents are used for malicious activity.</p>
+    <p>We can do nothing about third parties using/storing our data, however we can make it harder for them to sell or reuse our documents for other purposes.</p>
+    <p>Watermark your documents before sending them to the companies!</p>
+    <p>This tool is designed to help you with the watermarking, browse for an image and watermark it. Right click on the picture to download it<p>
+    <p><b>The whole process runs on your computer, no data is sent to this or any other server</b><p>
+    <noscript><b>You need to enable JavaScript to run this application</b></noscript>
+    <div id="app">
+        <form class="table" id="form">
+            <div>
+                <div><label for="src">Image</label></div>
+                <div>
+                    <div><input type="file" id="src" name="src" accept=".bmp,.gif,.jpeg,jpg,.png"></div>
+                    <div><small>.bmp, .gif, .jpeg, .jpeg, .png</small></div>
+                </div>
+            </div>
+            <div>
+                <div><label for="text">Text</label></div>
+                <div><input type="text" id="text" name="text" placeholder="COPY" data-default="COPY"></div>
+            </div>
+            <div>
+                <div><label for="scale">Size</label></div>
+                <div><input type="number" id="scale" name="scale" min="0" step="0.1" placeholder="auto" data-default="0"></div>
+            </div>
+            <div>
+                <div><label for="color">Color</label></div>
+                <div><input type="color" id="color" name="color" value="#ff0000" data-default="#ff0000"></div>
+            </div>
+            <div>
+                <div><label for="opacity">Opacity</label></div>
+                <div><input type="number" id="opacity" name="opacity" min="0" max="100" step="0.5" placeholder="90" data-default="90"></div>
+            </div>
+
+            <div>
+                <div><input type="submit" value="Mark"></div>
+                <div id="alert"></div>
+            </div>
+        </form>
+        <hr>
+        <div>
+            <img id="dst"/>
+        </div>
+    </div>
+</div>
+
+
+
+</body>
+</html>
