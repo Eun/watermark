@@ -53,6 +53,11 @@ func WatermarkReader(src io.Reader, dst io.Writer, options Options) error {
 }
 
 func WatermarkImage(src image.Image, options Options) (image.Image, error) {
+	if options.Scale <= 0 {
+		wantedFontSize := float64(src.Bounds().Max.X) / 10
+		options.Scale = wantedFontSize / 16
+	}
+
 	watermark := createWatermark(options.Text, options.Scale, options.Color)
 	sourceBounds := src.Bounds()
 	watermarkBounds := watermark.Bounds()

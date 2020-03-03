@@ -1,5 +1,6 @@
 # watermark
-watermark an image with a specific text
+watermark an image with a specific text.
+Also as a web version here: https://eun.github.io/watermark
 
 ## Installation
 

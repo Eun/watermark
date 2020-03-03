@@ -2,25 +2,28 @@ package main
 
 import (
 	"fmt"
+	"io"
+	"sync"
 
 	"strings"
 
-	"io"
+	"os"
 
-	"sync"
+	"strconv"
 
 	"github.com/Eun/watermark"
 	"github.com/gopherjs/gopherjs/js"
 	"honnef.co/go/js/dom"
 )
 
-var (
-	url            = js.Global.Get("URL")
-	document       = js.Global.Get("document")
-	readableStream = js.Global.Get("ReadableStream")
-	response       = js.Global.Get("Response")
-	uint8Array     = js.Global.Get("Uint8Array")
-)
+var jsx struct {
+	JSON           *js.Object
+	ReadableStream *js.Object
+	Response       *js.Object
+	Uint8Array     *js.Object
+	URL            *js.Object
+	Worker         *js.Object
+}
 
 type marker struct {
 	controller *js.Object
@@ -36,7 +39,7 @@ func (m *marker) Write(p []byte) (int, error) {
 	}
 	size := len(p)
 	fmt.Printf("writing %d to bytes\n", size)
-	m.controller.Call("enqueue", uint8Array.New(p))
+	m.controller.Call("enqueue", jsx.Uint8Array.New(p))
 	return size, nil
 }
 
@@ -58,23 +61,23 @@ func (m *marker) Close() error {
 	return nil
 }
 
-func Mark(file *dom.File, options watermark.Options) (blobUrl *js.Object, err error) {
+func Mark(file *dom.File, options watermark.Options) (blobUrl string, err error) {
 	var m marker
 	fmt.Println("creating ReadableStream")
 
-	readableStream := readableStream.New(map[string]interface{}{
+	readableStream := jsx.ReadableStream.New(map[string]interface{}{
 		"start": m.Start,
 	})
 
 	fmt.Println("creating Response")
-	stream := response.New(readableStream)
+	stream := jsx.Response.New(readableStream)
 	fmt.Println("creating Blob")
 
-	createdUrl := make(chan *js.Object)
+	createdUrl := make(chan string)
 
 	stream.Call("blob").Call("then", func(blob *js.Object) {
 		fmt.Println("creating ObjectURL")
-		createdUrl <- url.Call("createObjectURL", blob)
+		createdUrl <- jsx.URL.Call("createObjectURL", blob).String()
 	})
 
 	fmt.Println("marking")
@@ -82,74 +85,214 @@ func Mark(file *dom.File, options watermark.Options) (blobUrl *js.Object, err er
 	reader := NewFileReader(file)
 
 	if err = watermark.WatermarkReader(reader, &m, options); err != nil {
-		return nil, err
+		return "", err
 	}
 	fmt.Println("closing writer stream")
 	if err := m.Close(); err != nil {
-		return nil, err
+		return "", err
 	}
 	fmt.Println("marking done")
 	return <-createdUrl, nil
 }
 
 func main() {
+	if js.Global.Get("document") == js.Undefined {
+		worker()
+		return
+	}
+	web()
+	return
+}
+
+func mustGet(s string, fn func(string)) *js.Object {
+	v := js.Global.Get(s)
+	if v == nil {
+		fn(s)
+		return nil
+	}
+	return v
+}
+
+func initJSX(fn func(string)) {
+	jsx.JSON = mustGet("JSON", fn)
+	jsx.ReadableStream = mustGet("ReadableStream", fn)
+	jsx.Response = mustGet("Response", fn)
+	jsx.Uint8Array = mustGet("Uint8Array", fn)
+	jsx.URL = mustGet("URL", fn)
+	jsx.Worker = mustGet("Worker", fn)
+}
+
+type options struct {
+	*js.Object
+	Text  string  `js:"text"`
+	Scale float64 `js:"scale"`
+	Color string  `js:"color"`
+}
+
+func getInputValueAsString(element *dom.HTMLInputElement) string {
+	if element.Value == "" {
+		return element.GetAttribute("data-default")
+	}
+	return element.Value
+}
+
+func getInputValueAsFloat64(element *dom.HTMLInputElement) (float64, error) {
+	if element.Value == "" {
+		return strconv.ParseFloat(element.GetAttribute("data-default"), 0)
+	}
+	return element.ValueAsNumber, nil
+}
+
+func web() {
 	var blobUrl *js.Object
-	document.Set("onreadystatechange", func() {
-		if !strings.EqualFold(document.Get("readyState").String(), "complete") {
+	document, ok := dom.GetWindow().Document().(dom.HTMLDocument)
+	if !ok {
+		panic("document is not an HTMLDocument")
+	}
+	document.AddEventListener("readystatechange", false, func(event dom.Event) {
+		if !strings.EqualFold(document.ReadyState(), "complete") {
 			return
 		}
-		root := dom.GetWindow().Document()
-		src, ok := root.GetElementByID("src").(*dom.HTMLInputElement)
+		app, ok := document.GetElementByID("app").(*dom.HTMLDivElement)
+		if !ok {
+			panic("#app is not a div")
+		}
+		form, ok := document.GetElementByID("form").(*dom.HTMLFormElement)
+		if !ok {
+			panic("#form is not a form")
+		}
+
+		srcInput, ok := document.GetElementByID("src").(*dom.HTMLInputElement)
 		if !ok {
 			panic("#src is not an input field")
 		}
-		dst, ok := root.GetElementByID("dst").(*dom.HTMLImageElement)
+		textInput, ok := document.GetElementByID("text").(*dom.HTMLInputElement)
+		if !ok {
+			panic("#text is not an text field")
+		}
+		scaleInput, ok := document.GetElementByID("scale").(*dom.HTMLInputElement)
+		if !ok {
+			panic("#scale is not an text field")
+		}
+		colorInput, ok := document.GetElementByID("color").(*dom.HTMLInputElement)
+		if !ok {
+			panic("#color is not an text field")
+		}
+		opacityInput, ok := document.GetElementByID("opacity").(*dom.HTMLInputElement)
+		if !ok {
+			panic("#opacity is not an text field")
+		}
+		dstImage, ok := document.GetElementByID("dst").(*dom.HTMLImageElement)
 		if !ok {
 			panic("#dst is not an image field")
 		}
-		btn, ok := root.GetElementByID("doit").(*dom.HTMLButtonElement)
-		if !ok {
-			panic("#doit is not a button")
-		}
-		alert, ok := root.GetElementByID("alert").(*dom.HTMLDivElement)
+
+		alertText, ok := document.GetElementByID("alert").(*dom.HTMLDivElement)
 		if !ok {
 			panic("#alert is not a div")
 		}
 
-		btn.AddEventListener("click", true, func(e dom.Event) {
+		app.Style().Set("display", "block")
+
+		initJSX(func(s string) {
+			alertText.SetTextContent(s)
+			os.Exit(0)
+		})
+
+		form.AddEventListener("submit", true, func(e dom.Event) {
 			e.StopPropagation()
 			e.PreventDefault()
-			files := src.Files()
+			files := srcInput.Files()
 			if len(files) <= 0 {
 				return
 			}
 			// disable the button to avoid users double clicking
-			btn.Disabled = true
+			elements := form.QuerySelectorAll("*")
+			for _, el := range elements {
+				el.SetAttribute("disabled", "true")
+			}
 
-			go func() {
-				// enable button again
+			if blobUrl != nil {
+				// cleanup old url
+				jsx.URL.Call("revokeObjectURL", blobUrl)
+				blobUrl = nil
+			}
+			alertText.SetTextContent("Working...")
+
+			w := jsx.Worker.New("web.js")
+			w.Set("onmessage", func(e *js.Object) {
 				defer func() {
-					btn.Disabled = false
+					// disable the button to avoid users double clicking
+					elements := form.QuerySelectorAll("*")
+					for _, el := range elements {
+						el.RemoveAttribute("disabled")
+					}
 				}()
-				if blobUrl != nil {
-					// cleanup old url
-					url.Call("revokeObjectURL", blobUrl)
-					blobUrl = nil
-				}
-				var err error
-				alert.SetTextContent("Working...")
-				blobUrl, err = Mark(files[0], watermark.Options{
-					Text:  "Hello",
-					Scale: 1,
-					Color: watermark.ParseColor("#FF0000AA"),
-				})
-				if err != nil {
-					alert.SetTextContent(fmt.Sprintf("Error: %s", err.Error()))
+				data := e.Get("data")
+				if err := data.Get("Error").String(); err != "" {
+					alertText.SetTextContent(err)
 					return
 				}
-				alert.SetTextContent("Done")
-				dst.Set("src", blobUrl)
-			}()
+				alertText.SetTextContent("Done")
+				// dstImage.Set("src", data.Get("Url"))
+				dstImage.Src = data.Get("Url").String()
+				dstImage.SetTitle(files[0].Get("name").String())
+			})
+			o := options{Object: js.Global.Get("Object").New()}
+			o.Text = getInputValueAsString(textInput)
+			var err error
+			o.Scale, err = getInputValueAsFloat64(scaleInput)
+			if err != nil {
+				alertText.SetTextContent(err.Error())
+				return
+			}
+			o.Color = getInputValueAsString(colorInput)
+			opacity, err := getInputValueAsFloat64(opacityInput)
+			if err != nil {
+				alertText.SetTextContent(err.Error())
+				return
+			}
+			o.Color += fmt.Sprintf("%02x", int(255*opacity/100))
+			w.Call("postMessage", map[string]interface{}{
+				"options": o,
+				"file":    files[0],
+			})
 		})
+	})
+}
+
+func worker() {
+	printToPanic := func(s string) {
+		panic(s)
+	}
+	self := mustGet("self", printToPanic)
+	initJSX(printToPanic)
+
+	self.Set("onmessage", func(e *js.Object) {
+		go func() {
+			var sendMsg struct {
+				Error string
+				Url   string
+			}
+			defer func() {
+				self.Call("postMessage", sendMsg)
+			}()
+			data := e.Get("data")
+
+			file := &dom.File{data.Get("file")}
+			o := &options{Object: data.Get("options")}
+			opts := watermark.Options{
+				Text:  o.Text,
+				Scale: o.Scale,
+				Color: watermark.ParseColor(o.Color),
+			}
+
+			var err error
+			sendMsg.Url, err = Mark(file, opts)
+			if err != nil {
+				sendMsg.Error = err.Error()
+				return
+			}
+		}()
 	})
 }
