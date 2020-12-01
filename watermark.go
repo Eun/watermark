@@ -25,7 +25,10 @@ type Options struct {
 	Color color.Color
 }
 
-func WatermarkReader(src io.Reader, dst io.Writer, options Options) error {
+func WatermarkReader(src io.Reader, dst io.Writer, options *Options) error {
+	if options == nil {
+		return errors.New("options cannot be nil")
+	}
 	source, format, err := image.Decode(src)
 	if err != nil {
 		return errors.Wrapf(err, "unable to decode image")
@@ -52,7 +55,10 @@ func WatermarkReader(src io.Reader, dst io.Writer, options Options) error {
 	return nil
 }
 
-func WatermarkImage(src image.Image, options Options) (image.Image, error) {
+func WatermarkImage(src image.Image, options *Options) (image.Image, error) {
+	if options == nil {
+		return nil, errors.New("options cannot be nil")
+	}
 	if options.Scale <= 0 {
 		wantedFontSize := float64(src.Bounds().Max.X) / 10
 		options.Scale = wantedFontSize / 16

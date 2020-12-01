@@ -61,7 +61,7 @@ func (m *marker) Close() error {
 	return nil
 }
 
-func Mark(file *dom.File, options watermark.Options) (blobUrl string, err error) {
+func Mark(file *dom.File, options *watermark.Options) (blobUrl string, err error) {
 	var m marker
 	fmt.Println("creating ReadableStream")
 
@@ -236,6 +236,7 @@ func web() {
 				alertText.SetTextContent("Done")
 				// dstImage.Set("src", data.Get("Url"))
 				dstImage.Src = data.Get("Url").String()
+				scaleInput.Value = strconv.FormatFloat(data.Get("ScaleUsed").Float(), 'f', -1, 64)
 				dstImage.SetTitle(files[0].Get("name").String())
 			})
 			o := options{Object: js.Global.Get("Object").New()}
@@ -272,6 +273,7 @@ func worker() {
 		go func() {
 			var sendMsg struct {
 				Error string
+				ScaleUsed float64
 				Url   string
 			}
 			defer func() {
@@ -288,11 +290,12 @@ func worker() {
 			}
 
 			var err error
-			sendMsg.Url, err = Mark(file, opts)
+			sendMsg.Url, err = Mark(file, &opts)
 			if err != nil {
 				sendMsg.Error = err.Error()
 				return
 			}
+			sendMsg.ScaleUsed = opts.Scale
 		}()
 	})
 }

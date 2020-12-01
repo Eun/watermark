@@ -52,7 +52,7 @@ func main() {
 	options.Text = *flagText
 	options.Scale = *flagScale
 
-	if err := watermark.WatermarkReader(reader, writer, options); err != nil {
+	if err := watermark.WatermarkReader(reader, writer, &options); err != nil {
 		log.Fatalf("watermark failed: %s", err)
 	}
 }
