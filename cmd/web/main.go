@@ -236,7 +236,7 @@ func web() {
 				alertText.SetTextContent("Done")
 				// dstImage.Set("src", data.Get("Url"))
 				dstImage.Src = data.Get("Url").String()
-				scaleInput.Value = strconv.FormatFloat(data.Get("ScaleUsed").Float(), 'f', -1, 64)
+				scaleInput.Placeholder = strconv.FormatFloat(data.Get("ScaleUsed").Float(), 'f', -1, 64)
 				dstImage.SetTitle(files[0].Get("name").String())
 			})
 			o := options{Object: js.Global.Get("Object").New()}
