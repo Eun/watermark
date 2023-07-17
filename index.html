@@ -65,6 +65,7 @@
                type="number">
         <div>
             <button id="button">Mark</button>
+            <button id="download" disabled>Download</button>
         </div>
         <hr/>
         <a id="dst-url" target="_blank"><img id="dst-img"></a>
@@ -72,82 +73,101 @@
 </main>
 
 <script>
-    function markImage() {
-        try {
-            const text = document.getElementById('text').value || document.getElementById('text').attributes['data-default'].value;
-            const size = parseInt(
-                document.getElementById('size').value || document.getElementById('size').attributes['data-default'].value
-            );
-            const rotate = parseFloat(
-                document.getElementById('rotate').value || document.getElementById('rotate').attributes['data-default'].value
-            );
-            const color = document.getElementById('color').value || document.getElementById('color').attributes['data-default'].value;
-            const opacity = parseFloat(
-                document.getElementById('opacity').value || document.getElementById('opacity').attributes['data-default'].value
-            );
+    function markImage(name, type) {
+        return function () {
+            try {
+                const text = document.getElementById('text').value || document.getElementById('text').attributes['data-default'].value;
+                const size = parseInt(
+                    document.getElementById('size').value || document.getElementById('size').attributes['data-default'].value
+                );
+                const rotate = parseFloat(
+                    document.getElementById('rotate').value || document.getElementById('rotate').attributes['data-default'].value
+                );
+                const color = document.getElementById('color').value || document.getElementById('color').attributes['data-default'].value;
+                const opacity = parseFloat(
+                    document.getElementById('opacity').value || document.getElementById('opacity').attributes['data-default'].value
+                );
 
-            const ctx = document.createElement('canvas').getContext('2d');
+                const ctx = document.createElement('canvas').getContext('2d');
 
-            ctx.canvas.width = this.width;
-            ctx.canvas.height = this.height;
-            ctx.drawImage(this, 0, 0, this.width, this.height);
+                ctx.canvas.width = this.width;
+                ctx.canvas.height = this.height;
+                ctx.drawImage(this, 0, 0, this.width, this.height);
 
-            const overlayCanvas = document.createElement('canvas').getContext('2d');
+                const overlayCanvas = document.createElement('canvas').getContext('2d');
 
-            overlayCanvas.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
-            let fontSize = size;
-            let overlaySize = 0;
+                overlayCanvas.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+                let fontSize = size;
+                let overlaySize = 0;
 
-            overlayCanvas.fillStyle = color;
+                overlayCanvas.fillStyle = color;
 
-            if (fontSize !== 0) {
-                overlayCanvas.font = fontSize + 'px' + ' monospace';
-                const metrics = overlayCanvas.measureText(text);
-                const actualHeight = metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent;
-                overlaySize = Math.max(actualHeight, metrics.width);
-            } else {
-                // auto detect
-                fontSize = Math.min(this.width, this.height);
-                while (overlaySize === 0 || overlaySize * 4 > this.width || overlaySize * 4 > this.height) {
-                    fontSize--;
+                if (fontSize !== 0) {
                     overlayCanvas.font = fontSize + 'px' + ' monospace';
                     const metrics = overlayCanvas.measureText(text);
                     const actualHeight = metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent;
                     overlaySize = Math.max(actualHeight, metrics.width);
+                } else {
+                    // auto detect
+                    fontSize = Math.min(this.width, this.height);
+                    while (overlaySize === 0 || overlaySize * 4 > this.width || overlaySize * 4 > this.height) {
+                        fontSize--;
+                        overlayCanvas.font = fontSize + 'px' + ' monospace';
+                        const metrics = overlayCanvas.measureText(text);
+                        const actualHeight = metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent;
+                        overlaySize = Math.max(actualHeight, metrics.width);
+                    }
+                    document.getElementById('size').placeholder = fontSize;
                 }
-                document.getElementById('size').placeholder = fontSize;
-            }
 
-            overlayCanvas.canvas.width = overlaySize;
-            overlayCanvas.canvas.height = overlaySize;
+                overlayCanvas.canvas.width = overlaySize;
+                overlayCanvas.canvas.height = overlaySize;
 
 
-            overlayCanvas.translate(overlayCanvas.canvas.width / 2, overlayCanvas.canvas.height / 2);
-            overlayCanvas.rotate(rotate * Math.PI / 180);
-            overlayCanvas.textAlign = 'center';
-            overlayCanvas.fillStyle = color;
-            overlayCanvas.font = fontSize + 'px' + ' monospace';
+                overlayCanvas.translate(overlayCanvas.canvas.width / 2, overlayCanvas.canvas.height / 2);
+                overlayCanvas.rotate(rotate * Math.PI / 180);
+                overlayCanvas.textAlign = 'center';
+                overlayCanvas.fillStyle = color;
+                overlayCanvas.font = fontSize + 'px' + ' monospace';
 
-            overlayCanvas.globalAlpha = opacity / 100;
-            overlayCanvas.fillText(text, 0, 0);
+                overlayCanvas.globalAlpha = opacity / 100;
+                overlayCanvas.fillText(text, 0, 0);
 
-            for (let i = 0; i < ctx.canvas.width; i += overlaySize) {
-                for (let j = 0; j < ctx.canvas.height; j += overlaySize) {
-                    ctx.drawImage(overlayCanvas.canvas, i, j);
+                for (let i = 0; i < ctx.canvas.width; i += overlaySize) {
+                    for (let j = 0; j < ctx.canvas.height; j += overlaySize) {
+                        ctx.drawImage(overlayCanvas.canvas, i, j);
+                    }
                 }
-            }
 
-            document.getElementById("dst-img").src = ctx.canvas.toDataURL();
-            document.getElementById("dst-url").href = ctx.canvas.toDataURL();
-        } catch (e) {
-            console.error(e)
-            alert(e)
+                const url = ctx.canvas.toDataURL(type);
+                document.getElementById('dst-img').src = url;
+                document.getElementById('dst-url').href = url;
+
+                let ext = '-marked.png'
+                if (url.startsWith('data:image/bmp')) {
+                    ext = '-marked.bmp'
+                } else if (url.startsWith('data:image/gif')) {
+                    ext = '-marked.gif'
+                } else if (url.startsWith('data:image/jpeg')) {
+                    ext = '-marked.jpg'
+                }
+                const nameParts = name.split('.');
+                if (nameParts.length === 1) {
+                    name = name + ext
+                } else {
+                    name = nameParts.slice(0, -1) + ext
+                }
+                document.getElementById('dst-url').download = name;
+                document.getElementById('download').disabled = false;
+            } catch (e) {
+                console.error(e);
+                alert(e);
+            }
         }
     }
 
     document.getElementById('button').addEventListener('click', function (ev) {
         ev.preventDefault();
-
         try {
             const files = document.getElementById("src").files;
             if (files.length === 0) {
@@ -157,7 +177,7 @@
 
             let reader = new FileReader();
             let img = new Image();
-            img.onload = markImage;
+            img.onload = markImage(files.item(0).name, files.item(0).type);
             reader.onloadend = function () {
                 img.src = reader.result;
             }
@@ -167,6 +187,11 @@
             alert(e)
         }
     });
+
+    document.getElementById("download").addEventListener('click', function (ev) {
+        ev.preventDefault();
+        document.getElementById("dst-url").click()
+    })
 </script>
 </body>
 </html>
