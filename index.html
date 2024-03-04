@@ -155,7 +155,7 @@
                 if (nameParts.length === 1) {
                     name = name + ext
                 } else {
-                    name = nameParts.slice(0, -1) + ext
+                    name = nameParts.slice(0, -1).join('.') + ext
                 }
                 document.getElementById('dst-url').download = name;
                 document.getElementById('download').disabled = false;
